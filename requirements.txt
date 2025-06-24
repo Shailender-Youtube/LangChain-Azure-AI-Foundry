@@ -1,0 +1,7 @@
+langchain-core 
+langchain-azure-ai 
+pypdf 
+faiss-cpu 
+python-dotenv
+azure-identity
+flask

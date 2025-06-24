@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>RAG Chat Portal</title>
+  <style>
+    body, html { margin:0; padding:0; height:100%; font-family:Arial,sans-serif; }
+    .chat-area { display:flex; flex-direction:column; height:100%; }
+    .messages {
+      flex:1; padding:1rem; overflow-y:auto; background:#fafafa;
+      display:flex; flex-direction:column;
+    }
+    .message {
+      max-width:70%; padding:0.5rem 1rem; margin:0.5rem 0;
+      border-radius:8px;
+    }
+    .user { align-self:flex-end; background:#cce5ff; }
+    .bot  { align-self:flex-start; background:#e2e3e5; }
+    .refs {
+      margin-top:0.5rem; font-size:0.85rem; color:#555;
+      border-left:2px solid #888; padding-left:0.5rem;
+    }
+    .input-area {
+      display:flex; padding:1rem; background:#fff;
+      box-shadow:0 -2px 5px rgba(0,0,0,0.1);
+    }
+    .input-area input {
+      flex:1; padding:0.75rem; font-size:1rem;
+      border:1px solid #ccc; border-radius:4px; margin-right:0.5rem;
+    }
+    .input-area button {
+      padding:0.75rem 1.5rem; font-size:1rem;
+      background:#007bff; color:#fff; border:none; border-radius:4px;
+      cursor:pointer;
+    }
+    .input-area button:hover { background:#0056b3; }
+  </style>
+</head>
+<body>
+  <div class="chat-area">
+    <div class="messages" id="messages"></div>
+    <div class="input-area">
+      <input type="text" id="userInput" placeholder="Type your message…" />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const msgs = document.getElementById('messages');
+    const inp  = document.getElementById('userInput');
+    const btn  = document.getElementById('sendBtn');
+
+    function addMessage(text, cls, refs=[]) {
+      const el = document.createElement('div');
+      el.className = `message ${cls}`;
+      el.textContent = text;
+      if (cls==='bot' && refs.length>0) {
+        const r = document.createElement('div');
+        r.className = 'refs';
+        r.innerHTML = '<strong>Sources:</strong><br>' + refs.map(s=>`• ${s}`).join('<br>');
+        el.appendChild(r);
+      }
+      msgs.appendChild(el);
+      msgs.scrollTop = msgs.scrollHeight;
+    }
+
+    async function sendMsg() {
+      const q = inp.value.trim();
+      if (!q) return;
+      addMessage(q,'user');
+      inp.value = '';
+      try {
+        const res = await fetch('/api/chat', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({query:q})
+        });
+        if (!res.ok) {
+          const err = await res.text();
+          addMessage(`❌ Error ${res.status}`,'bot');
+          console.error(err);
+          return;
+        }
+        const {answer,sources} = await res.json();
+        addMessage(answer,'bot',sources);
+      } catch(e) {
+        addMessage('❌ Network error','bot');
+        console.error(e);
+      }
+    }
+
+    btn.addEventListener('click', sendMsg);
+    inp.addEventListener('keydown', e=> e.key==='Enter' && sendMsg());
+  </script>
+</body>
+</html>
